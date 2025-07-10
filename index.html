@@ -5,98 +5,88 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Velocidade com Mapa</title>
 
-  <!-- Manifesto para PWA -->
-  <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#007bff" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-
-  <!-- Ícones para Android e iOS (crie esses arquivos e coloque aqui) -->
   <link rel="icon" sizes="192x192" href="icon-192.png" />
   <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="manifest" href="manifest.json" />
 
-  <!-- Leaflet CSS -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
-    body {
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
       font-family: Arial, sans-serif;
       background-color: #f4f6f8;
-      text-align: center;
-      padding: 20px;
     }
-    .container {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      padding: 30px;
-      max-width: 600px;
-      margin: auto;
-    }
-    h1 {
-      font-size: 2em;
-      margin-bottom: 20px;
-    }
-    .velocidade {
-      font-size: 2.5em;
-      color: #007bff;
-      margin-bottom: 10px;
-    }
-    .atualizacao {
-      font-size: 0.9em;
-      color: #666;
-    }
+
     #map {
-      height: 300px;
-      margin-top: 20px;
-      border-radius: 10px;
+      height: calc(100% - 120px); /* ocupa tudo, exceto espaço inferior */
+      width: 100%;
     }
+
+    .info-container {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background: #ffffffdd;
+      padding: 10px 15px;
+      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .velocidade {
+      font-size: 1.5em;
+      color: #007bff;
+      margin: 5px 0;
+    }
+
+    .atualizacao {
+      font-size: 0.85em;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
     .botao-atualizar {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 1em;
+      padding: 6px 16px;
+      font-size: 0.95em;
       background-color: #007bff;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
     }
+
     .botao-atualizar:hover {
       background-color: #0056b3;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Velocidade Atual</h1>
+  <div id="map"></div>
+
+  <div class="info-container">
     <div class="velocidade" id="velocidade">Carregando...</div>
     <div class="atualizacao" id="atualizacao">Última atualização: --</div>
-    <button class="botao-atualizar" onclick="atualizarPagina()">
-      Atualizar agora
-    </button>
-    <div id="map"></div>
+    <button class="botao-atualizar" onclick="atualizarPagina()">Atualizar agora</button>
   </div>
 
-  <!-- Leaflet.js -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const urlVelocidade =
-      'https://api.thingspeak.com/channels/3005014/fields/3.json?api_key=17RRUIDT3E9A8RK4&results=1';
-    const urlLatitude =
-      'https://api.thingspeak.com/channels/3005014/fields/1.json?api_key=ZV2RKNG7A5A19P5D&results=1';
-    const urlLongitude =
-      'https://api.thingspeak.com/channels/3005014/fields/2.json?api_key=ZV2RKNG7A5A19P5D&results=1';
+    const urlVelocidade = "https://api.thingspeak.com/channels/3005014/fields/3.json?api_key=17RRUIDT3E9A8RK4&results=1";
+    const urlLatitude = "https://api.thingspeak.com/channels/3005014/fields/1.json?api_key=ZV2RKNG7A5A19P5D&results=1";
+    const urlLongitude = "https://api.thingspeak.com/channels/3005014/fields/2.json?api_key=ZV2RKNG7A5A19P5D&results=1";
 
-    const map = L.map('map').setView([0, 0], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap',
+    const map = L.map("map").setView([0, 0], 2);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap"
     }).addTo(map);
 
-    const marker = L.marker([0, 0]).addTo(map).bindPopup('Localização Atual');
+    const marker = L.marker([0, 0]).addTo(map).bindPopup("Localização Atual");
 
     async function atualizarPagina() {
       try {
@@ -106,10 +96,8 @@
         const velocidade = dadoVel.field3;
         const data = new Date(dadoVel.created_at);
 
-        document.getElementById('velocidade').textContent = `${velocidade} km/h`;
-        document.getElementById(
-          'atualizacao'
-        ).textContent = `Última atualização: ${data.toLocaleString('pt-BR')}`;
+        document.getElementById("velocidade").textContent = `${velocidade} km/h`;
+        document.getElementById("atualizacao").textContent = `Última atualização: ${data.toLocaleString("pt-BR")}`;
 
         const resLat = await fetch(urlLatitude);
         const dadosLat = await resLat.json();
@@ -117,17 +105,15 @@
 
         const resLong = await fetch(urlLongitude);
         const dadosLong = await resLong.json();
-        const long = parseFloat(
-          dadosLong.feeds[dadosLong.feeds.length - 1].field2
-        );
+        const long = parseFloat(dadosLong.feeds[dadosLong.feeds.length - 1].field2);
 
         if (!isNaN(lat) && !isNaN(long)) {
           marker.setLatLng([lat, long]);
           map.setView([lat, long], 15);
         }
       } catch (erro) {
-        console.error('Erro ao buscar dados:', erro);
-        document.getElementById('velocidade').textContent = 'Erro';
+        console.error("Erro ao buscar dados:", erro);
+        document.getElementById("velocidade").textContent = "Erro";
       }
     }
 
