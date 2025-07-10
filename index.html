@@ -6,11 +6,12 @@
   <title>Velocidade com Mapa</title>
 
   <meta name="theme-color" content="#007bff" />
-  <link rel="icon" sizes="192x192" href="icon-192.png" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="icon" href="https://lucide.dev/favicon.ico" />
   <link rel="manifest" href="manifest.json" />
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
     html, body {
@@ -38,11 +39,19 @@
       align-items: center;
     }
 
-    .velocidade {
-      font-size: 1.5em;
+    .velocidade-wrapper {
+      display: flex;
+      align-items: center;
+      font-size: 1.4em;
       font-weight: bold;
       color: #007bff;
-      margin-bottom: 6px;
+      margin-bottom: 10px;
+    }
+
+    .velocidade-wrapper svg {
+      margin-right: 8px;
+      width: 24px;
+      height: 24px;
     }
 
     .botao-atualizar {
@@ -78,13 +87,14 @@
   <div id="map"></div>
 
   <div class="info-container">
-    <div class="velocidade" id="velocidade">-- km/h</div>
+    <div class="velocidade-wrapper">
+      <i data-lucide="gauge"></i>
+      <div id="velocidade">-- km/h</div>
+    </div>
     <button class="botao-atualizar" onclick="atualizarPagina()">Atualizar agora</button>
     <div class="endereco" id="endereco">Carregando endereço...</div>
     <div class="atualizacao" id="atualizacao">Última atualização: --</div>
   </div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
     const urlVelocidade = "https://api.thingspeak.com/channels/3005014/fields/3.json?api_key=17RRUIDT3E9A8RK4&results=1";
@@ -122,7 +132,7 @@
           marker.setLatLng([lat, long]);
           map.setView([lat, long], 15);
 
-          // Endereço simplificado (rua, bairro, cidade)
+          // Endereço simplificado
           const enderecoURL = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${long}&zoom=18&addressdetails=1`;
           const resEndereco = await fetch(enderecoURL, {
             headers: { 'User-Agent': 'VelocidadeMapaApp' }
@@ -148,6 +158,9 @@
 
     atualizarPagina();
     setInterval(atualizarPagina, 5000);
+
+    // Ativa ícones Lucide
+    lucide.createIcons();
   </script>
 </body>
 </html>
