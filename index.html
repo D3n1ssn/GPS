@@ -3,86 +3,64 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Velocidade com Mapa</title>
-
-  <meta name="theme-color" content="#007bff" />
+  <title>Rastreamento ao Vivo</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-
   <style>
     html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
+      margin: 0; padding: 0; height: 100%;
       font-family: Arial, sans-serif;
-      background-color: #f4f6f8;
     }
-
     #map {
-      height: calc(100% - 170px);
-      width: 100%;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 80px; /* deixa espaço para o painel info */
+      z-index: 0;
     }
-
     .info-container {
       position: fixed;
-      bottom: 0;
-      width: 100%;
-      background: #ffffffee;
+      bottom: 0; left: 0; right: 0;
+      height: 80px;
+      background: rgba(255,255,255,0.95);
       padding: 10px 15px;
-      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
+      z-index: 1000;
       display: flex;
       flex-direction: column;
-      align-items: center;
-    }
-
-    .linha-topo {
-      display: flex;
       justify-content: center;
-      align-items: center;
-      gap: 20px;
-      margin-bottom: 8px;
+      gap: 6px;
     }
-
-    .velocidade-wrapper {
+    .info-top {
       display: flex;
+      justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+    }
+    .velocidade {
       font-size: 1.2em;
       font-weight: bold;
       color: #007bff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-
-    .velocidade-wrapper svg {
-      margin-right: 6px;
-      width: 20px;
-      height: 20px;
+    .endereco {
+      font-size: 0.9em;
+      color: #444;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-
     .botao-atualizar {
-      padding: 6px 16px;
-      font-size: 1em;
+      padding: 6px 12px;
+      font-size: 0.9em;
       background-color: #007bff;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
+      white-space: nowrap;
     }
-
     .botao-atualizar:hover {
       background-color: #0056b3;
-    }
-
-    .endereco {
-      font-size: 0.95em;
-      color: #333;
-      text-align: center;
-      margin-bottom: 4px;
-      max-width: 95%;
-    }
-
-    .atualizacao {
-      font-size: 0.8em;
-      color: #777;
     }
   </style>
 </head>
@@ -90,98 +68,102 @@
   <div id="map"></div>
 
   <div class="info-container">
-    <div class="linha-topo">
-      <div class="velocidade-wrapper">
-        <i data-lucide="gauge"></i>
-        <span id="velocidade">-- km/h</span>
-      </div>
+    <div class="info-top">
+      <div class="velocidade">🚗 <span id="velocidade">-- km/h</span></div>
       <button class="botao-atualizar" onclick="atualizarPagina()">Atualizar agora</button>
     </div>
-    <div class="endereco" id="endereco">Carregando endereço...</div>
-    <div class="atualizacao" id="atualizacao">Última atualização: --</div>
+    <div class="endereco" id="endereco">Endereço: --</div>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const canalId = "3005014";
-    const apiKeyLeitura = "ZV2RKNG7A5A19P5D";
+    const apiKey = "ZV2RKNG7A5A19P5D";
+    const urlBase = `https://api.thingspeak.com/channels/${canalId}/feeds.json?api_key=${apiKey}`;
 
-    const map = L.map("map").setView([0, 0], 2);
+    const map = L.map("map").setView([-23.5, -46.6], 13);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap"
+      attribution: "© OpenStreetMap",
     }).addTo(map);
 
-    const marker = L.marker([0, 0]).addTo(map).bindPopup("Localização Atual");
-    let polyline = null;
+    let marcador = null;
+    let rota = null;
     let usuarioMexeu = false;
 
-    // Detecta quando o usuário mexe no mapa
     map.on("movestart", () => {
       usuarioMexeu = true;
     });
 
     async function atualizarPagina() {
       try {
-        // Dados de velocidade
-        const velRes = await fetch("https://api.thingspeak.com/channels/3005014/fields/3.json?api_key=17RRUIDT3E9A8RK4&results=1");
-        const velDados = await velRes.json();
-        const ultimo = velDados.feeds[velDados.feeds.length - 1];
-        const velocidade = ultimo.field3;
-        const data = new Date(ultimo.created_at);
-        document.getElementById("velocidade").textContent = `${velocidade} km/h`;
-        document.getElementById("atualizacao").textContent = `Última atualização: ${data.toLocaleString("pt-BR")}`;
+        // Velocidade
+        const resVel = await fetch(`https://api.thingspeak.com/channels/${canalId}/fields/3.json?api_key=${apiKey}&results=1`);
+        const jsonVel = await resVel.json();
+        const ultimoVel = jsonVel.feeds.at(-1);
+        if (ultimoVel && ultimoVel.field3) {
+          document.getElementById("velocidade").textContent = `${ultimoVel.field3} km/h`;
+        } else {
+          document.getElementById("velocidade").textContent = `-- km/h`;
+        }
 
-        // Data de hoje
-        const hoje = new Date();
-        const inicio = new Date(hoje.setHours(0, 0, 0, 0)).toISOString();
-        const fim = new Date().toISOString();
+        // Intervalo do dia: hoje 00:00 até agora
+        const agora = new Date();
+        const inicio = new Date();
+        inicio.setHours(0, 0, 0, 0);
+        const urlDia = `${urlBase}&start=${inicio.toISOString()}&end=${agora.toISOString()}&results=8000`;
 
-        const urlTrajeto = `https://api.thingspeak.com/channels/${canalId}/feeds.json?api_key=${apiKeyLeitura}&start=${inicio}&end=${fim}&results=8000`;
-        const trajetoRes = await fetch(urlTrajeto);
-        const trajetoDados = await trajetoRes.json();
+        const resDia = await fetch(urlDia);
+        const jsonDia = await resDia.json();
 
-        const pontos = trajetoDados.feeds
-          .map(feed => {
-            const lat = parseFloat(feed.field1);
-            const lon = parseFloat(feed.field2);
-            return !isNaN(lat) && !isNaN(lon) ? [lat, lon] : null;
+        const pontos = jsonDia.feeds
+          .map(p => {
+            const lat = parseFloat(p.field1);
+            const lon = parseFloat(p.field2);
+            return (!isNaN(lat) && !isNaN(lon)) ? [lat, lon] : null;
           })
           .filter(Boolean);
 
         if (pontos.length > 0) {
-          const ultimoPonto = pontos[pontos.length - 1];
-          marker.setLatLng(ultimoPonto);
-          
+          const ultimoPonto = pontos.at(-1);
+
+          if (marcador) {
+            marcador.setLatLng(ultimoPonto);
+          } else {
+            marcador = L.marker(ultimoPonto).addTo(map);
+          }
+
           if (!usuarioMexeu) {
             map.setView(ultimoPonto, 15);
           }
 
-          // Traçado do percurso
-          if (polyline) map.removeLayer(polyline);
-          polyline = L.polyline(pontos, { color: "blue", weight: 4 }).addTo(map);
+          if (rota) {
+            rota.remove();
+          }
+          rota = L.polyline(pontos, { color: "#007bff", weight: 4 }).addTo(map);
 
-          // Endereço
+          // Reverse geocode para endereço
           const [lat, lon] = ultimoPonto;
-          const enderecoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
-            headers: { "User-Agent": "VelocidadeMapaApp" }
-          });
-          const dadosEndereco = await enderecoRes.json();
-          const addr = dadosEndereco.address;
-          const rua = addr.road || "";
-          const bairro = addr.suburb || addr.neighbourhood || "";
-          const cidade = addr.city || addr.town || addr.village || "";
-          const enderecoFinal = [rua, bairro, cidade].filter(Boolean).join(", ");
-          document.getElementById("endereco").textContent = enderecoFinal || "Endereço não disponível";
+          const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+          const dataGeo = await geo.json();
+          const endereco = dataGeo.address || {};
+
+          const enderecoFormatado = [
+            endereco.road,
+            endereco.suburb || endereco.neighbourhood,
+            endereco.city || endereco.town || endereco.village
+          ].filter(Boolean).join(", ");
+
+          document.getElementById("endereco").textContent = `Endereço: ${enderecoFormatado || '--'}`;
+        } else {
+          document.getElementById("endereco").textContent = `Endereço: --`;
         }
-      } catch (err) {
-        console.error("Erro:", err);
-        document.getElementById("velocidade").textContent = "Erro";
-        document.getElementById("endereco").textContent = "Erro ao buscar dados";
+      } catch (e) {
+        console.error("Erro ao atualizar:", e);
       }
     }
 
     atualizarPagina();
     setInterval(atualizarPagina, 5000);
-    lucide.createIcons();
   </script>
 </body>
 </html>
