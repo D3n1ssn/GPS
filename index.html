@@ -22,7 +22,7 @@
     }
 
     #map {
-      height: calc(100% - 120px); /* ocupa tudo, exceto espaço inferior */
+      height: calc(100% - 170px);
       width: 100%;
     }
 
@@ -30,7 +30,7 @@
       position: fixed;
       bottom: 0;
       width: 100%;
-      background: #ffffffdd;
+      background: #ffffffee;
       padding: 10px 15px;
       box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
       display: flex;
@@ -40,28 +40,37 @@
 
     .velocidade {
       font-size: 1.5em;
+      font-weight: bold;
       color: #007bff;
-      margin: 5px 0;
-    }
-
-    .atualizacao {
-      font-size: 0.85em;
-      color: #666;
-      margin-bottom: 5px;
+      margin-bottom: 6px;
     }
 
     .botao-atualizar {
-      padding: 6px 16px;
-      font-size: 0.95em;
+      padding: 6px 20px;
+      font-size: 1em;
       background-color: #007bff;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
+      margin-bottom: 10px;
     }
 
     .botao-atualizar:hover {
       background-color: #0056b3;
+    }
+
+    .endereco {
+      font-size: 0.95em;
+      color: #333;
+      text-align: center;
+      margin-bottom: 4px;
+      max-width: 95%;
+    }
+
+    .atualizacao {
+      font-size: 0.8em;
+      color: #777;
     }
   </style>
 </head>
@@ -69,9 +78,10 @@
   <div id="map"></div>
 
   <div class="info-container">
-    <div class="velocidade" id="velocidade">Carregando...</div>
-    <div class="atualizacao" id="atualizacao">Última atualização: --</div>
+    <div class="velocidade" id="velocidade">-- km/h</div>
     <button class="botao-atualizar" onclick="atualizarPagina()">Atualizar agora</button>
+    <div class="endereco" id="endereco">Carregando endereço...</div>
+    <div class="atualizacao" id="atualizacao">Última atualização: --</div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -90,15 +100,16 @@
 
     async function atualizarPagina() {
       try {
+        // Velocidade
         const resVel = await fetch(urlVelocidade);
         const dadosVel = await resVel.json();
         const dadoVel = dadosVel.feeds[dadosVel.feeds.length - 1];
         const velocidade = dadoVel.field3;
         const data = new Date(dadoVel.created_at);
-
         document.getElementById("velocidade").textContent = `${velocidade} km/h`;
         document.getElementById("atualizacao").textContent = `Última atualização: ${data.toLocaleString("pt-BR")}`;
 
+        // Coordenadas
         const resLat = await fetch(urlLatitude);
         const dadosLat = await resLat.json();
         const lat = parseFloat(dadosLat.feeds[dadosLat.feeds.length - 1].field1);
@@ -110,10 +121,28 @@
         if (!isNaN(lat) && !isNaN(long)) {
           marker.setLatLng([lat, long]);
           map.setView([lat, long], 15);
+
+          // Endereço simplificado (rua, bairro, cidade)
+          const enderecoURL = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${long}&zoom=18&addressdetails=1`;
+          const resEndereco = await fetch(enderecoURL, {
+            headers: { 'User-Agent': 'VelocidadeMapaApp' }
+          });
+          const dadosEndereco = await resEndereco.json();
+
+          const address = dadosEndereco.address;
+          const rua = address.road || "";
+          const bairro = address.suburb || address.neighbourhood || "";
+          const cidade = address.city || address.town || address.village || "";
+          const enderecoTexto = [rua, bairro, cidade].filter(Boolean).join(", ");
+
+          document.getElementById("endereco").textContent = enderecoTexto || "Endereço não disponível";
+        } else {
+          document.getElementById("endereco").textContent = "Coordenadas inválidas";
         }
       } catch (erro) {
         console.error("Erro ao buscar dados:", erro);
         document.getElementById("velocidade").textContent = "Erro";
+        document.getElementById("endereco").textContent = "Erro ao buscar endereço";
       }
     }
 
