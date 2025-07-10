@@ -6,9 +6,7 @@
   <title>Velocidade com Mapa</title>
 
   <meta name="theme-color" content="#007bff" />
-  <link rel="icon" href="https://lucide.dev/favicon.ico" />
   <link rel="manifest" href="manifest.json" />
-
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -39,30 +37,36 @@
       align-items: center;
     }
 
+    .linha-topo {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 8px;
+    }
+
     .velocidade-wrapper {
       display: flex;
       align-items: center;
-      font-size: 1.4em;
+      font-size: 1.2em;
       font-weight: bold;
       color: #007bff;
-      margin-bottom: 10px;
     }
 
     .velocidade-wrapper svg {
-      margin-right: 8px;
-      width: 24px;
-      height: 24px;
+      margin-right: 6px;
+      width: 20px;
+      height: 20px;
     }
 
     .botao-atualizar {
-      padding: 6px 20px;
+      padding: 6px 16px;
       font-size: 1em;
       background-color: #007bff;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      margin-bottom: 10px;
     }
 
     .botao-atualizar:hover {
@@ -87,11 +91,13 @@
   <div id="map"></div>
 
   <div class="info-container">
-    <div class="velocidade-wrapper">
-      <i data-lucide="gauge"></i>
-      <div id="velocidade">-- km/h</div>
+    <div class="linha-topo">
+      <div class="velocidade-wrapper">
+        <i data-lucide="gauge"></i>
+        <span id="velocidade">-- km/h</span>
+      </div>
+      <button class="botao-atualizar" onclick="atualizarPagina()">Atualizar agora</button>
     </div>
-    <button class="botao-atualizar" onclick="atualizarPagina()">Atualizar agora</button>
     <div class="endereco" id="endereco">Carregando endereço...</div>
     <div class="atualizacao" id="atualizacao">Última atualização: --</div>
   </div>
@@ -110,7 +116,6 @@
 
     async function atualizarPagina() {
       try {
-        // Velocidade
         const resVel = await fetch(urlVelocidade);
         const dadosVel = await resVel.json();
         const dadoVel = dadosVel.feeds[dadosVel.feeds.length - 1];
@@ -119,7 +124,6 @@
         document.getElementById("velocidade").textContent = `${velocidade} km/h`;
         document.getElementById("atualizacao").textContent = `Última atualização: ${data.toLocaleString("pt-BR")}`;
 
-        // Coordenadas
         const resLat = await fetch(urlLatitude);
         const dadosLat = await resLat.json();
         const lat = parseFloat(dadosLat.feeds[dadosLat.feeds.length - 1].field1);
@@ -132,19 +136,16 @@
           marker.setLatLng([lat, long]);
           map.setView([lat, long], 15);
 
-          // Endereço simplificado
           const enderecoURL = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${long}&zoom=18&addressdetails=1`;
           const resEndereco = await fetch(enderecoURL, {
             headers: { 'User-Agent': 'VelocidadeMapaApp' }
           });
           const dadosEndereco = await resEndereco.json();
-
           const address = dadosEndereco.address;
           const rua = address.road || "";
           const bairro = address.suburb || address.neighbourhood || "";
           const cidade = address.city || address.town || address.village || "";
           const enderecoTexto = [rua, bairro, cidade].filter(Boolean).join(", ");
-
           document.getElementById("endereco").textContent = enderecoTexto || "Endereço não disponível";
         } else {
           document.getElementById("endereco").textContent = "Coordenadas inválidas";
@@ -158,8 +159,6 @@
 
     atualizarPagina();
     setInterval(atualizarPagina, 5000);
-
-    // Ativa ícones Lucide
     lucide.createIcons();
   </script>
 </body>
