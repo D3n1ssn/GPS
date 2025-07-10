@@ -6,7 +6,6 @@
   <title>Velocidade com Mapa</title>
 
   <meta name="theme-color" content="#007bff" />
-  <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -103,9 +102,8 @@
   </div>
 
   <script>
-    const urlVelocidade = "https://api.thingspeak.com/channels/3005014/fields/3.json?api_key=17RRUIDT3E9A8RK4&results=1";
-    const urlLatitude = "https://api.thingspeak.com/channels/3005014/fields/1.json?api_key=ZV2RKNG7A5A19P5D&results=1";
-    const urlLongitude = "https://api.thingspeak.com/channels/3005014/fields/2.json?api_key=ZV2RKNG7A5A19P5D&results=1";
+    const canalId = "3005014";
+    const apiKeyLeitura = "ZV2RKNG7A5A19P5D";
 
     const map = L.map("map").setView([0, 0], 2);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -113,47 +111,71 @@
     }).addTo(map);
 
     const marker = L.marker([0, 0]).addTo(map).bindPopup("Localização Atual");
+    let polyline = null;
+    let usuarioMexeu = false;
+
+    // Detecta quando o usuário mexe no mapa
+    map.on("movestart", () => {
+      usuarioMexeu = true;
+    });
 
     async function atualizarPagina() {
       try {
-        const resVel = await fetch(urlVelocidade);
-        const dadosVel = await resVel.json();
-        const dadoVel = dadosVel.feeds[dadosVel.feeds.length - 1];
-        const velocidade = dadoVel.field3;
-        const data = new Date(dadoVel.created_at);
+        // Dados de velocidade
+        const velRes = await fetch("https://api.thingspeak.com/channels/3005014/fields/3.json?api_key=17RRUIDT3E9A8RK4&results=1");
+        const velDados = await velRes.json();
+        const ultimo = velDados.feeds[velDados.feeds.length - 1];
+        const velocidade = ultimo.field3;
+        const data = new Date(ultimo.created_at);
         document.getElementById("velocidade").textContent = `${velocidade} km/h`;
         document.getElementById("atualizacao").textContent = `Última atualização: ${data.toLocaleString("pt-BR")}`;
 
-        const resLat = await fetch(urlLatitude);
-        const dadosLat = await resLat.json();
-        const lat = parseFloat(dadosLat.feeds[dadosLat.feeds.length - 1].field1);
+        // Data de hoje
+        const hoje = new Date();
+        const inicio = new Date(hoje.setHours(0, 0, 0, 0)).toISOString();
+        const fim = new Date().toISOString();
 
-        const resLong = await fetch(urlLongitude);
-        const dadosLong = await resLong.json();
-        const long = parseFloat(dadosLong.feeds[dadosLong.feeds.length - 1].field2);
+        const urlTrajeto = `https://api.thingspeak.com/channels/${canalId}/feeds.json?api_key=${apiKeyLeitura}&start=${inicio}&end=${fim}&results=8000`;
+        const trajetoRes = await fetch(urlTrajeto);
+        const trajetoDados = await trajetoRes.json();
 
-        if (!isNaN(lat) && !isNaN(long)) {
-          marker.setLatLng([lat, long]);
-          map.setView([lat, long], 15);
+        const pontos = trajetoDados.feeds
+          .map(feed => {
+            const lat = parseFloat(feed.field1);
+            const lon = parseFloat(feed.field2);
+            return !isNaN(lat) && !isNaN(lon) ? [lat, lon] : null;
+          })
+          .filter(Boolean);
 
-          const enderecoURL = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${long}&zoom=18&addressdetails=1`;
-          const resEndereco = await fetch(enderecoURL, {
-            headers: { 'User-Agent': 'VelocidadeMapaApp' }
+        if (pontos.length > 0) {
+          const ultimoPonto = pontos[pontos.length - 1];
+          marker.setLatLng(ultimoPonto);
+          
+          if (!usuarioMexeu) {
+            map.setView(ultimoPonto, 15);
+          }
+
+          // Traçado do percurso
+          if (polyline) map.removeLayer(polyline);
+          polyline = L.polyline(pontos, { color: "blue", weight: 4 }).addTo(map);
+
+          // Endereço
+          const [lat, lon] = ultimoPonto;
+          const enderecoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
+            headers: { "User-Agent": "VelocidadeMapaApp" }
           });
-          const dadosEndereco = await resEndereco.json();
-          const address = dadosEndereco.address;
-          const rua = address.road || "";
-          const bairro = address.suburb || address.neighbourhood || "";
-          const cidade = address.city || address.town || address.village || "";
-          const enderecoTexto = [rua, bairro, cidade].filter(Boolean).join(", ");
-          document.getElementById("endereco").textContent = enderecoTexto || "Endereço não disponível";
-        } else {
-          document.getElementById("endereco").textContent = "Coordenadas inválidas";
+          const dadosEndereco = await enderecoRes.json();
+          const addr = dadosEndereco.address;
+          const rua = addr.road || "";
+          const bairro = addr.suburb || addr.neighbourhood || "";
+          const cidade = addr.city || addr.town || addr.village || "";
+          const enderecoFinal = [rua, bairro, cidade].filter(Boolean).join(", ");
+          document.getElementById("endereco").textContent = enderecoFinal || "Endereço não disponível";
         }
-      } catch (erro) {
-        console.error("Erro ao buscar dados:", erro);
+      } catch (err) {
+        console.error("Erro:", err);
         document.getElementById("velocidade").textContent = "Erro";
-        document.getElementById("endereco").textContent = "Erro ao buscar endereço";
+        document.getElementById("endereco").textContent = "Erro ao buscar dados";
       }
     }
 
