@@ -12,20 +12,19 @@
     }
     #map {
       position: absolute;
-      top: 0; left: 0; right: 0; bottom: 80px; /* deixa espaço para o painel info */
+      top: 0; left: 0; right: 0; bottom: 100px; /* espaço para painel info */
       z-index: 0;
     }
     .info-container {
       position: fixed;
       bottom: 0; left: 0; right: 0;
-      height: 80px;
+      height: auto;
       background: rgba(255,255,255,0.95);
       padding: 10px 15px;
       box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
       z-index: 1000;
       display: flex;
       flex-direction: column;
-      justify-content: center;
       gap: 6px;
     }
     .info-top {
@@ -35,19 +34,12 @@
       flex-wrap: wrap;
     }
     .velocidade {
-      font-size: 1.2em;
+      font-size: 1.1em;
       font-weight: bold;
       color: #007bff;
       display: flex;
       align-items: center;
       gap: 6px;
-    }
-    .endereco {
-      font-size: 0.9em;
-      color: #444;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
     .botao-atualizar {
       padding: 6px 12px;
@@ -62,6 +54,12 @@
     .botao-atualizar:hover {
       background-color: #0056b3;
     }
+    .endereco, .horario {
+      font-size: 0.9em;
+      color: #444;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
   </style>
 </head>
 <body>
@@ -73,6 +71,7 @@
       <button class="botao-atualizar" onclick="atualizarPagina()">Atualizar agora</button>
     </div>
     <div class="endereco" id="endereco">Endereço: --</div>
+    <div class="horario" id="horario">Capturado em: --</div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -119,30 +118,28 @@
           .map(p => {
             const lat = parseFloat(p.field1);
             const lon = parseFloat(p.field2);
-            return (!isNaN(lat) && !isNaN(lon)) ? [lat, lon] : null;
+            return (!isNaN(lat) && !isNaN(lon)) ? { coord: [lat, lon], hora: p.created_at } : null;
           })
           .filter(Boolean);
 
         if (pontos.length > 0) {
           const ultimoPonto = pontos.at(-1);
+          const [lat, lon] = ultimoPonto.coord;
 
           if (marcador) {
-            marcador.setLatLng(ultimoPonto);
+            marcador.setLatLng(ultimoPonto.coord);
           } else {
-            marcador = L.marker(ultimoPonto).addTo(map);
+            marcador = L.marker(ultimoPonto.coord).addTo(map);
           }
 
           if (!usuarioMexeu) {
-            map.setView(ultimoPonto, 15);
+            map.setView(ultimoPonto.coord, 15);
           }
 
-          if (rota) {
-            rota.remove();
-          }
-          rota = L.polyline(pontos, { color: "#007bff", weight: 4 }).addTo(map);
+          if (rota) rota.remove();
+          rota = L.polyline(pontos.map(p => p.coord), { color: "#007bff", weight: 4 }).addTo(map);
 
-          // Reverse geocode para endereço
-          const [lat, lon] = ultimoPonto;
+          // Endereço
           const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
           const dataGeo = await geo.json();
           const endereco = dataGeo.address || {};
@@ -154,8 +151,12 @@
           ].filter(Boolean).join(", ");
 
           document.getElementById("endereco").textContent = `Endereço: ${enderecoFormatado || '--'}`;
+
+          const horarioLocal = new Date(ultimoPonto.hora).toLocaleString("pt-BR");
+          document.getElementById("horario").textContent = `Capturado em: ${horarioLocal}`;
         } else {
           document.getElementById("endereco").textContent = `Endereço: --`;
+          document.getElementById("horario").textContent = `Capturado em: --`;
         }
       } catch (e) {
         console.error("Erro ao atualizar:", e);
