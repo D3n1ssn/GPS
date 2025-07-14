@@ -12,7 +12,7 @@
     }
     #map {
       position: absolute;
-      top: 0; left: 0; right: 0; bottom: 100px; /* espaço para painel info */
+      top: 0; left: 0; right: 0; bottom: 100px;
       z-index: 0;
     }
     .info-container {
@@ -95,15 +95,11 @@
 
     async function atualizarPagina() {
       try {
-        // Velocidade
+        // Busca último dado de velocidade (field3)
         const resVel = await fetch(`https://api.thingspeak.com/channels/${canalId}/fields/3.json?api_key=${apiKey}&results=1`);
         const jsonVel = await resVel.json();
-        const ultimoVel = jsonVel.feeds.at(-1);
-        if (ultimoVel && ultimoVel.field3) {
-          document.getElementById("velocidade").textContent = `${ultimoVel.field3} km/h`;
-        } else {
-          document.getElementById("velocidade").textContent = `-- km/h`;
-        }
+        const ultimoVelFeed = jsonVel.feeds.at(-1);
+        const velUltimo = ultimoVelFeed && ultimoVelFeed.field3 ? parseFloat(ultimoVelFeed.field3) : null;
 
         // Intervalo do dia: hoje 00:00 até agora
         const agora = new Date();
@@ -114,50 +110,92 @@
         const resDia = await fetch(urlDia);
         const jsonDia = await resDia.json();
 
-        const pontos = jsonDia.feeds
+        // Mapeia pontos com lat/lon e hora
+        const pontosValidos = jsonDia.feeds
           .map(p => {
             const lat = parseFloat(p.field1);
             const lon = parseFloat(p.field2);
-            return (!isNaN(lat) && !isNaN(lon)) ? { coord: [lat, lon], hora: p.created_at } : null;
+            return (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) ? { coord: [lat, lon], hora: p.created_at } : null;
           })
           .filter(Boolean);
 
-        if (pontos.length > 0) {
-          const ultimoPonto = pontos.at(-1);
-          const [lat, lon] = ultimoPonto.coord;
+        // Último ponto válido
+        const ultimoPontoValido = pontosValidos.length > 0 ? pontosValidos.at(-1) : null;
 
-          if (marcador) {
-            marcador.setLatLng(ultimoPonto.coord);
+        // Último ponto geral (pode ser zero)
+        const ultimoFeed = jsonDia.feeds.at(-1);
+        const latUltimo = ultimoFeed ? parseFloat(ultimoFeed.field1) : null;
+        const lonUltimo = ultimoFeed ? parseFloat(ultimoFeed.field2) : null;
+        const velUlt = velUltimo !== null ? velUltimo : (ultimoFeed && ultimoFeed.field3 ? parseFloat(ultimoFeed.field3) : null);
+
+        const semSinal = latUltimo === 0 && lonUltimo === 0 && velUlt === 0;
+
+        if (semSinal) {
+          // Aviso GPS SEM SINAL
+          document.getElementById("velocidade").textContent = "GPS SEM SINAL";
+
+          if (ultimoPontoValido) {
+            // Endereço reverso da última posição válida
+            const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${ultimoPontoValido.coord[0]}&lon=${ultimoPontoValido.coord[1]}`);
+            const dataGeo = await geo.json();
+            const endereco = dataGeo.address || {};
+            const enderecoFormatado = [
+              endereco.road,
+              endereco.suburb || endereco.neighbourhood,
+              endereco.city || endereco.town || endereco.village
+            ].filter(Boolean).join(", ") || "Endereço não disponível";
+
+            document.getElementById("endereco").textContent = `Último endereço válido: ${enderecoFormatado}`;
+            document.getElementById("horario").textContent = `Capturado em: ${new Date(ultimoPontoValido.hora).toLocaleString("pt-BR")}`;
+
+            if (marcador) {
+              marcador.setLatLng(ultimoPontoValido.coord);
+            } else {
+              marcador = L.marker(ultimoPontoValido.coord).addTo(map);
+            }
+            if (!usuarioMexeu) map.setView(ultimoPontoValido.coord, 15);
           } else {
-            marcador = L.marker(ultimoPonto.coord).addTo(map);
+            document.getElementById("endereco").textContent = "Último endereço válido: --";
+            document.getElementById("horario").textContent = "Capturado em: --";
           }
-
-          if (!usuarioMexeu) {
-            map.setView(ultimoPonto.coord, 15);
-          }
-
-          if (rota) rota.remove();
-          rota = L.polyline(pontos.map(p => p.coord), { color: "#007bff", weight: 4 }).addTo(map);
-
-          // Endereço
-          const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-          const dataGeo = await geo.json();
-          const endereco = dataGeo.address || {};
-
-          const enderecoFormatado = [
-            endereco.road,
-            endereco.suburb || endereco.neighbourhood,
-            endereco.city || endereco.town || endereco.village
-          ].filter(Boolean).join(", ");
-
-          document.getElementById("endereco").textContent = `Endereço: ${enderecoFormatado || '--'}`;
-
-          const horarioLocal = new Date(ultimoPonto.hora).toLocaleString("pt-BR");
-          document.getElementById("horario").textContent = `Capturado em: ${horarioLocal}`;
         } else {
-          document.getElementById("endereco").textContent = `Endereço: --`;
-          document.getElementById("horario").textContent = `Capturado em: --`;
+          // Velocidade normal
+          document.getElementById("velocidade").textContent = velUlt !== null ? `${velUlt} km/h` : "-- km/h";
+
+          if (ultimoPontoValido) {
+            if (marcador) {
+              marcador.setLatLng(ultimoPontoValido.coord);
+            } else {
+              marcador = L.marker(ultimoPontoValido.coord).addTo(map);
+            }
+            if (!usuarioMexeu) map.setView(ultimoPontoValido.coord, 15);
+
+            // Endereço reverso
+            const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${ultimoPontoValido.coord[0]}&lon=${ultimoPontoValido.coord[1]}`);
+            const dataGeo = await geo.json();
+            const endereco = dataGeo.address || {};
+            const enderecoFormatado = [
+              endereco.road,
+              endereco.suburb || endereco.neighbourhood,
+              endereco.city || endereco.town || endereco.village
+            ].filter(Boolean).join(", ") || "Endereço não disponível";
+
+            document.getElementById("endereco").textContent = `Endereço: ${enderecoFormatado}`;
+            document.getElementById("horario").textContent = `Capturado em: ${new Date(ultimoPontoValido.hora).toLocaleString("pt-BR")}`;
+          } else {
+            document.getElementById("endereco").textContent = "Endereço: --";
+            document.getElementById("horario").textContent = "Capturado em: --";
+          }
         }
+
+        // Remove rota antiga se existir
+        if (rota) rota.remove();
+
+        // Desenha rota com pontos válidos
+        if (pontosValidos.length > 1) {
+          rota = L.polyline(pontosValidos.map(p => p.coord), { color: "#007bff", weight: 4 }).addTo(map);
+        }
+
       } catch (e) {
         console.error("Erro ao atualizar:", e);
       }
