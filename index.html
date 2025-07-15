@@ -187,7 +187,10 @@
             document.getElementById("horario").textContent = "Capturado em: --";
           }
         } else {
-          document.getElementById("velocidade").textContent = velUlt !== null ? `${velUlt} km/h` : "-- km/h";
+          // Mostra velocidade 0 km/h se menor que 2
+          let velExibir = (velUlt !== null && !isNaN(velUlt)) ? (velUlt < 2 ? 0 : velUlt) : null;
+          document.getElementById("velocidade").textContent = velExibir !== null ? `${velExibir} km/h` : "-- km/h";
+
           if (ultimoPontoValido) {
             if (marcador) {
               marcador.setLatLng(ultimoPontoValido.coord);
