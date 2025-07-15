@@ -3,39 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Rastreamento ao Vivo - Controle de Acesso</title>
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <title>Rastreamento ao Vivo</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
+    html, body {
+      margin: 0; padding: 0; height: 100%;
       font-family: Arial, sans-serif;
-      background: #f0f0f0;
-    }
-    #map, .info-container {
-      display: none; /* Inicialmente escondido para controle de acesso */
     }
     #map {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 100px;
+      top: 0; left: 0; right: 0; bottom: 100px;
       z-index: 0;
     }
     .info-container {
       position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(255, 255, 255, 0.95);
+      bottom: 0; left: 0; right: 0;
+      height: auto;
+      background: rgba(255,255,255,0.95);
       padding: 10px 15px;
-      box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
       z-index: 1000;
       display: flex;
       flex-direction: column;
@@ -68,100 +54,15 @@
     .botao-atualizar:hover {
       background-color: #0056b3;
     }
-    .endereco,
-    .horario {
+    .endereco, .horario {
       font-size: 0.9em;
       color: #444;
       word-wrap: break-word;
       overflow-wrap: break-word;
     }
-
-    /* Estilo do overlay que bloqueia o conteúdo e mostra teclado */
-    #acesso-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 2000;
-      user-select: none;
-    }
-    #display-codigo {
-      width: 130px;
-      height: 38px;
-      font-size: 28px;
-      letter-spacing: 8px;
-      text-align: center;
-      margin-bottom: 20px;
-      border: 2px solid #007bff;
-      border-radius: 8px;
-      background: #e9ecef;
-      user-select: text;
-    }
-    .teclado {
-      display: grid;
-      grid-template-columns: repeat(3, 60px);
-      gap: 10px;
-    }
-    .btn-num {
-      width: 60px;
-      height: 60px;
-      font-size: 22px;
-      font-weight: bold;
-      border: 2px solid #007bff;
-      border-radius: 10px;
-      background: white;
-      color: #007bff;
-      cursor: pointer;
-      transition: background-color 0.2s, color 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      user-select: none;
-    }
-    .btn-num:hover {
-      background-color: #007bff;
-      color: white;
-    }
-    .btn-apagar {
-      grid-column: span 3;
-      background: #dc3545;
-      color: white;
-      border-color: #dc3545;
-    }
-    .btn-apagar:hover {
-      background: #b02a37;
-      border-color: #b02a37;
-    }
   </style>
 </head>
 <body>
-
-  <!-- Overlay de acesso -->
-  <div id="acesso-container">
-    <input type="password" id="display-codigo" disabled placeholder="•••" />
-    <div class="teclado">
-      <button class="btn-num" data-num="1">1</button>
-      <button class="btn-num" data-num="2">2</button>
-      <button class="btn-num" data-num="3">3</button>
-      <button class="btn-num" data-num="4">4</button>
-      <button class="btn-num" data-num="5">5</button>
-      <button class="btn-num" data-num="6">6</button>
-      <button class="btn-num" data-num="7">7</button>
-      <button class="btn-num" data-num="8">8</button>
-      <button class="btn-num" data-num="9">9</button>
-      <button class="btn-apagar" id="btn-apagar">Apagar</button>
-      <button class="btn-num" data-num="0">0</button>
-      <div></div>
-    </div>
-  </div>
-
-  <!-- Conteúdo do site -->
   <div id="map"></div>
 
   <div class="info-container">
@@ -179,7 +80,6 @@
     const apiKey = "ZV2RKNG7A5A19P5D";
     const urlBase = `https://api.thingspeak.com/channels/${canalId}/feeds.json?api_key=${apiKey}`;
 
-    // Inicializar o mapa (antes invisível)
     const map = L.map("map").setView([-23.5, -46.6], 13);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap",
@@ -193,53 +93,49 @@
       usuarioMexeu = true;
     });
 
+    // Função para calcular distância entre dois pontos [lat, lon] em metros
     function distanciaEmMetros(a, b) {
       const R = 6371000;
-      const rad = (x) => (x * Math.PI) / 180;
+      const rad = x => x * Math.PI / 180;
       const dLat = rad(b[0] - a[0]);
       const dLon = rad(b[1] - a[1]);
       const lat1 = rad(a[0]);
       const lat2 = rad(b[0]);
       const x = dLon * Math.cos((lat1 + lat2) / 2);
-      return Math.sqrt(dLat * dLat + x * x) * R;
+      const d = Math.sqrt(dLat * dLat + x * x) * R;
+      return d;
     }
 
+    // Atualização principal do mapa/dados
     async function atualizarPagina() {
       try {
+        // Buscar velocidade mais recente
+        const resVel = await fetch(`https://api.thingspeak.com/channels/${canalId}/fields/3.json?api_key=${apiKey}&results=1`);
+        const jsonVel = await resVel.json();
+        const ultimoVelFeed = jsonVel.feeds.at(-1);
+        const velUltimo = ultimoVelFeed && ultimoVelFeed.field3 ? parseFloat(ultimoVelFeed.field3) : null;
+
+        // Buscar feeds do dia (mude o interval se precisar)
         const agora = new Date();
         const inicio = new Date();
         inicio.setHours(0, 0, 0, 0);
-        const url = `${urlBase}&start=${inicio.toISOString()}&end=${agora.toISOString()}&results=8000`;
-        const res = await fetch(url);
-        const data = await res.json();
+        const urlDia = `${urlBase}&start=${inicio.toISOString()}&end=${agora.toISOString()}&results=8000`;
 
-        const pontosValidos = data.feeds
-          .map((p) => {
+        const resDia = await fetch(urlDia);
+        const jsonDia = await resDia.json();
+
+        // Filtro dos pontos válidos
+        const pontosValidos = jsonDia.feeds
+          .map(p => {
             const lat = parseFloat(p.field1);
             const lon = parseFloat(p.field2);
-            if (!lat || !lon || lat === 0 || lon === 0 || isNaN(lat) || isNaN(lon)) return null;
-            return { coord: [lat, lon], hora: p.created_at };
+            return (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) ? { coord: [lat, lon], hora: p.created_at } : null;
           })
           .filter(Boolean);
 
-        if (pontosValidos.length === 0) {
-          console.log("Nenhum ponto válido no período.");
-          document.getElementById("velocidade").textContent = "GPS sem sinal";
-          document.getElementById("endereco").textContent = "Endereço: --";
-          document.getElementById("horario").textContent = "Capturado em: --";
-          rotasDesenhadas.forEach((r) => r.remove());
-          rotasDesenhadas = [];
-          if (marcador) {
-            map.removeLayer(marcador);
-            marcador = null;
-          }
-          return;
-        }
-
+        // Agrupa segmentos removendo saltos maiores que 1km
         const LIMITE_METROS = 1000;
-        const segmentos = [];
-        let segmentoAtual = [];
-
+        let segmentos = [], segmentoAtual = [];
         for (let i = 0; i < pontosValidos.length; i++) {
           if (
             i === 0 ||
@@ -253,104 +149,89 @@
         }
         if (segmentoAtual.length > 1) segmentos.push(segmentoAtual);
 
-        rotasDesenhadas.forEach((r) => r.remove());
-        rotasDesenhadas = [];
+        // Último ponto válido (real do dia)
+        const ultimoPontoValido = pontosValidos.length > 0 ? pontosValidos.at(-1) : null;
 
-        segmentos.forEach((seg) => {
+        // Último registro (que pode ser zero)
+        const ultimoFeed = jsonDia.feeds.at(-1);
+        const latUltimo = ultimoFeed ? parseFloat(ultimoFeed.field1) : null;
+        const lonUltimo = ultimoFeed ? parseFloat(ultimoFeed.field2) : null;
+        const velUlt = velUltimo !== null ? velUltimo : (ultimoFeed && ultimoFeed.field3 ? parseFloat(ultimoFeed.field3) : null);
+
+        const semSinal = latUltimo === 0 && lonUltimo === 0 && velUlt === 0;
+
+        if (semSinal) {
+          document.getElementById("velocidade").textContent = "GPS SEM SINAL";
+
+          if (ultimoPontoValido) {
+            const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${ultimoPontoValido.coord[0]}&lon=${ultimoPontoValido.coord[1]}`);
+            const dataGeo = await geo.json();
+            const endereco = dataGeo.address || {};
+            const enderecoFormatado = [
+              endereco.road,
+              endereco.suburb || endereco.neighbourhood,
+              endereco.city || endereco.town || endereco.village
+            ].filter(Boolean).join(", ") || "Endereço não disponível";
+
+            document.getElementById("endereco").textContent = `Último endereço válido: ${enderecoFormatado}`;
+            document.getElementById("horario").textContent = `Capturado em: ${new Date(ultimoPontoValido.hora).toLocaleString("pt-BR")}`;
+
+            if (marcador) {
+              marcador.setLatLng(ultimoPontoValido.coord);
+            } else {
+              marcador = L.marker(ultimoPontoValido.coord).addTo(map);
+            }
+            if (!usuarioMexeu) map.setView(ultimoPontoValido.coord, 15);
+          } else {
+            document.getElementById("endereco").textContent = "Último endereço válido: --";
+            document.getElementById("horario").textContent = "Capturado em: --";
+          }
+        } else {
+          // Mostra velocidade 0 km/h se menor que 2
+          let velExibir = (velUlt !== null && !isNaN(velUlt)) ? (velUlt < 2 ? 0 : velUlt) : null;
+          document.getElementById("velocidade").textContent = velExibir !== null ? `${velExibir} km/h` : "-- km/h";
+
+          if (ultimoPontoValido) {
+            if (marcador) {
+              marcador.setLatLng(ultimoPontoValido.coord);
+            } else {
+              marcador = L.marker(ultimoPontoValido.coord).addTo(map);
+            }
+            if (!usuarioMexeu) map.setView(ultimoPontoValido.coord, 15);
+
+            const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${ultimoPontoValido.coord[0]}&lon=${ultimoPontoValido.coord[1]}`);
+            const dataGeo = await geo.json();
+            const endereco = dataGeo.address || {};
+            const enderecoFormatado = [
+              endereco.road,
+              endereco.suburb || endereco.neighbourhood,
+              endereco.city || endereco.town || endereco.village
+            ].filter(Boolean).join(", ") || "Endereço não disponível";
+
+            document.getElementById("endereco").textContent = `Endereço: ${enderecoFormatado}`;
+            document.getElementById("horario").textContent = `Capturado em: ${new Date(ultimoPontoValido.hora).toLocaleString("pt-BR")}`;
+          } else {
+            document.getElementById("endereco").textContent = "Endereço: --";
+            document.getElementById("horario").textContent = "Capturado em: --";
+          }
+        }
+
+        // Remove rotas antigas desenhadas
+        rotasDesenhadas.forEach(r => r.remove());
+        rotasDesenhadas = [];
+        // Desenha as rotas principais (segmentos)
+        segmentos.forEach(seg => {
           const rota = L.polyline(seg, { color: "#007bff", weight: 4 }).addTo(map);
           rotasDesenhadas.push(rota);
         });
 
-        const ultimoPonto = pontosValidos[pontosValidos.length - 1];
-        if (ultimoPonto && ultimoPonto.coord[0] !== 0 && ultimoPonto.coord[1] !== 0) {
-          if (marcador) {
-            marcador.setLatLng(ultimoPonto.coord);
-          } else {
-            marcador = L.marker(ultimoPonto.coord).addTo(map);
-          }
-          if (!usuarioMexeu) map.setView(ultimoPonto.coord, 15);
-
-          const resGeo = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${ultimoPonto.coord[0]}&lon=${ultimoPonto.coord[1]}`
-          );
-          const dataGeo = await resGeo.json();
-
-          const endereco = dataGeo.address || {};
-          const enderecoFormatado = [
-            endereco.road,
-            endereco.suburb || endereco.neighbourhood,
-            endereco.city || endereco.town || endereco.village,
-          ]
-            .filter(Boolean)
-            .join(", ") || "Endereço não disponível";
-
-          document.getElementById("endereco").textContent = `Endereço: ${enderecoFormatado}`;
-          document.getElementById("horario").textContent = `Capturado em: ${new Date(
-            ultimoPonto.hora
-          ).toLocaleString("pt-BR")}`;
-
-          const ultimoFeed = data.feeds[data.feeds.length - 1];
-          const velRaw = ultimoFeed.field3 ? parseFloat(ultimoFeed.field3) : null;
-          let velExibir = velRaw !== null && !isNaN(velRaw) ? (velRaw < 2 ? 0 : velRaw) : null;
-          document.getElementById("velocidade").textContent = velExibir !== null ? `${velExibir} km/h` : "-- km/h";
-        } else {
-          document.getElementById("velocidade").textContent = "GPS SEM SINAL";
-          document.getElementById("endereco").textContent = "Endereço: --";
-          document.getElementById("horario").textContent = "Capturado em: --";
-        }
-      } catch (error) {
-        console.error("Erro ao atualizar:", error);
+      } catch (e) {
+        console.error("Erro ao atualizar:", e);
       }
     }
 
-    // CONTROLE DE ACESSO COM TECLADO NUMÉRICO
-    (() => {
-      const codigoCorreto = "007";
-      let codigoDigitado = "";
-      const acessoContainer = document.getElementById("acesso-container");
-      const displayCodigo = document.getElementById("display-codigo");
-      const botoes = document.querySelectorAll(".btn-num");
-      const btnApagar = document.getElementById("btn-apagar");
-
-      function atualizarDisplay() {
-        displayCodigo.value = "•".repeat(codigoDigitado.length);
-      }
-
-      function liberarAcesso() {
-        acessoContainer.style.display = "none";
-        document.getElementById("map").style.display = "block";
-        document.querySelector(".info-container").style.display = "flex";
-
-        // Forçar Leaflet a redimensionar depois da exibição
-        map.invalidateSize();
-
-        atualizarPagina();
-        setInterval(atualizarPagina, 5000);
-      }
-
-      botoes.forEach((botao) => {
-        botao.addEventListener("click", () => {
-          if (codigoDigitado.length >= codigoCorreto.length) return;
-          codigoDigitado += botao.dataset.num;
-          atualizarDisplay();
-          if (codigoDigitado.length === codigoCorreto.length) {
-            if (codigoDigitado === codigoCorreto) {
-              liberarAcesso();
-            } else {
-              codigoDigitado = "";
-              atualizarDisplay();
-            }
-          }
-        });
-      });
-
-      btnApagar.addEventListener("click", () => {
-        if (codigoDigitado.length > 0) {
-          codigoDigitado = codigoDigitado.slice(0, -1);
-          atualizarDisplay();
-        }
-      });
-    })();
+    atualizarPagina();
+    setInterval(atualizarPagina, 5000);
   </script>
 </body>
 </html>
