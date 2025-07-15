@@ -9,6 +9,7 @@
     html, body {
       margin: 0; padding: 0; height: 100%;
       font-family: Arial, sans-serif;
+      overflow: hidden; /* Evita scroll enquanto modal aberto */
     }
     #map {
       position: absolute;
@@ -60,6 +61,93 @@
       word-wrap: break-word;
       overflow-wrap: break-word;
     }
+
+    /* Modal e keypad CSS */
+    #modal-acesso {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+    }
+    #modal-conteudo {
+      background: #fff;
+      padding: 20px 25px;
+      border-radius: 10px;
+      max-width: 320px;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+      user-select: none;
+    }
+    #display-codigo {
+      font-size: 2em;
+      letter-spacing: 12px;
+      height: 2.5em;
+      margin-bottom: 15px;
+      font-family: 'Courier New', Courier, monospace;
+      border: 2px solid #007bff;
+      border-radius: 8px;
+      padding: 5px 10px;
+      background: #f0f8ff;
+      cursor: default;
+    }
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+    .keypad button {
+      padding: 15px 0;
+      font-size: 1.5em;
+      border-radius: 8px;
+      border: none;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      user-select: none;
+    }
+    .keypad button:hover {
+      background-color: #0056b3;
+    }
+    #btn-confirmar {
+      background-color: #28a745;
+      padding: 12px 20px;
+      font-size: 1.2em;
+      border-radius: 8px;
+      border: none;
+      color: white;
+      cursor: pointer;
+      user-select: none;
+      margin-right: 10px;
+      transition: background-color 0.3s;
+    }
+    #btn-confirmar:hover {
+      background-color: #1e7e34;
+    }
+    #btn-limpar {
+      background-color: #dc3545;
+      padding: 12px 20px;
+      font-size: 1.2em;
+      border-radius: 8px;
+      border: none;
+      color: white;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.3s;
+    }
+    #btn-limpar:hover {
+      background-color: #a71d2a;
+    }
+    .botao-container {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+    }
   </style>
 
   <script>
@@ -72,39 +160,36 @@
       }
       return hash;
     }
-
     const codigoCorretoHash = hashCodigo("007");
-
-    async function solicitarCodigo() {
-      while (true) {
-        const codigoInput = prompt("Digite o código para acessar:");
-
-        if (codigoInput === null) {
-          alert("Acesso cancelado.");
-          document.body.innerHTML = "<h2 style='text-align:center;margin-top:50px;color:red;'>Acesso negado</h2>";
-          throw new Error("Acesso negado pelo usuário");
-        }
-
-        if (hashCodigo(codigoInput) === codigoCorretoHash) {
-          alert("Código correto! Bem-vindo!");
-          break;
-        } else {
-          alert("Código incorreto. Tente novamente.");
-        }
-      }
-    }
-    
-    window.onload = async () => {
-      try {
-        await solicitarCodigo();
-        iniciarRastreamento();
-      } catch {
-        // Acesso negado, não carrega nada
-      }
-    };
   </script>
 </head>
 <body>
+  <!-- Modal de acesso com keypad -->
+  <div id="modal-acesso">
+    <div id="modal-conteudo">
+      <h2>Digite o código para acessar</h2>
+      <div id="display-codigo">•••</div>
+      <div class="keypad">
+        <button data-num="1">1</button>
+        <button data-num="2">2</button>
+        <button data-num="3">3</button>
+        <button data-num="4">4</button>
+        <button data-num="5">5</button>
+        <button data-num="6">6</button>
+        <button data-num="7">7</button>
+        <button data-num="8">8</button>
+        <button data-num="9">9</button>
+        <div></div> <!-- espaço vazio -->
+        <button data-num="0">0</button>
+        <div></div> <!-- espaço vazio -->
+      </div>
+      <div class="botao-container">
+        <button id="btn-limpar">Limpar</button>
+        <button id="btn-confirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="map"></div>
 
   <div class="info-container">
@@ -118,6 +203,65 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    // Variáveis do sistema de código
+    let codigoDigitado = "";
+
+    // Elementos do modal / display
+    const displayCodigo = document.getElementById("display-codigo");
+    const modalAcesso = document.getElementById("modal-acesso");
+
+    // Atualiza o display (mostrando • por cada dígito)
+    function atualizarDisplay() {
+      if (codigoDigitado.length === 0) {
+        displayCodigo.textContent = "•••";
+      } else {
+        displayCodigo.textContent = "•".repeat(codigoDigitado.length);
+      }
+    }
+
+    // Função para validar código
+    function validarCodigo() {
+      if (hashCodigo(codigoDigitado) === codigoCorretoHash) {
+        // Código correto - remove o modal e inicializa mapa
+        modalAcesso.style.display = "none";
+        document.body.style.overflow = "auto"; // libera scroll
+        iniciarRastreamento();
+      } else {
+        alert("Código incorreto. Tente novamente.");
+        codigoDigitado = "";
+        atualizarDisplay();
+      }
+    }
+
+    // Eventos dos botões do keypad
+    document.querySelectorAll(".keypad button").forEach(botao => {
+      botao.addEventListener("click", () => {
+        if (codigoDigitado.length >= 10) return; // limite de dígitos
+        codigoDigitado += botao.dataset.num;
+        atualizarDisplay();
+      });
+    });
+
+    // Botão limpar
+    document.getElementById("btn-limpar").addEventListener("click", () => {
+      codigoDigitado = "";
+      atualizarDisplay();
+    });
+
+    // Botão confirmar
+    document.getElementById("btn-confirmar").addEventListener("click", () => {
+      if (codigoDigitado.length === 0) {
+        alert("Digite o código antes de confirmar.");
+        return;
+      }
+      validarCodigo();
+    });
+
+    // Impede scroll do body enquanto modal ativo
+    document.body.style.overflow = "hidden";
+    atualizarDisplay();
+
+    // Função de rastreamento e mapa
     function iniciarRastreamento() {
       const canalId = "3005014";
       const apiKey = "ZV2RKNG7A5A19P5D";
