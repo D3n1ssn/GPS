@@ -72,15 +72,20 @@
       z-index: 2000;
       flex-direction: column;
       color: white;
+      padding: 20px;
+      box-sizing: border-box;
     }
     #loginModal input {
       padding: 8px;
-      font-size: 1.2em;
+      font-size: 1.5em;
       border-radius: 6px;
       border: none;
       margin-bottom: 10px;
       width: 180px;
       text-align: center;
+      letter-spacing: 6px;
+      background: #fff;
+      color: #000;
     }
     #loginModal button {
       padding: 8px 20px;
@@ -90,11 +95,15 @@
       background-color: #007bff;
       color: white;
       cursor: pointer;
+      width: 100%;
+      max-width: 180px;
     }
     #loginError {
       color: #ff6666;
       margin-top: 8px;
       height: 1.2em;
+      font-weight: bold;
+      text-align: center;
     }
   </style>
 </head>
@@ -103,7 +112,7 @@
   <!-- Modal de login -->
   <div id="loginModal">
     <h2>Digite o código de acesso</h2>
-    <input id="codigoInput" type="password" placeholder="Código" autofocus />
+    <input id="codigoInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="Código" autofocus />
     <button onclick="verificarCodigo()">Entrar</button>
     <div id="loginError"></div>
   </div>
@@ -332,7 +341,7 @@
       }
     }
 
-    // Permite Enter para enviar o código no input
+    // Permite enviar o código com Enter no input
     document.getElementById("codigoInput").addEventListener("keypress", function(e) {
       if (e.key === "Enter") {
         verificarCodigo();
