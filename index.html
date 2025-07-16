@@ -161,7 +161,7 @@
         const semSinal = latUltimo === 0 && lonUltimo === 0 && velUlt === 0;
 
         if (semSinal) {
-          document.getElementById("velocidade").textContent = "GPS SEM SINAL";
+          document.getElementById("velocidade").textContent = "O KM/H";
 
           if (ultimoPontoValido) {
             const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${ultimoPontoValido.coord[0]}&lon=${ultimoPontoValido.coord[1]}`);
